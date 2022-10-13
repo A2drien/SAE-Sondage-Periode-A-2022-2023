@@ -1,23 +1,17 @@
-import pandas as pd
+import pandas
+from utils_project import *
 
-FILE_NAME = "Aliments.xlsx"
-COLUMN_NAME_ALIMENTS = 'alim_nom_fr'
+dfAliments = pandas.read_excel(FILE_NAME_ALIMENTS)
 
-
-dfAliments = pd.read_excel(FILE_NAME)
-
-dfAliments['estBio'] = ['bio' in dfAliments[COLUMN_NAME_ALIMENTS][i] for i in dfAliments.index]
-dfAliments['estVegan'] = ['vegan' in dfAliments[COLUMN_NAME_ALIMENTS][i] for i in dfAliments.index]
-dfAliments['estCasher'] = ['casher' in dfAliments[COLUMN_NAME_ALIMENTS][i] for i in dfAliments.index]
-dfAliments['estHalal'] = ['halal' in dfAliments[COLUMN_NAME_ALIMENTS][i] for i in dfAliments.index]
-
-#Facultatif, sert au debug
-print(sum(['bio' in dfAliments[COLUMN_NAME_ALIMENTS][i] for i in dfAliments.index])) #51 trouvés
-print(sum(['vegan' in dfAliments[COLUMN_NAME_ALIMENTS][i] for i in dfAliments.index])) #13 trouvés
-print(sum(['casher' in dfAliments[COLUMN_NAME_ALIMENTS][i] for i in dfAliments.index])) #0
-print(sum(['halal' in dfAliments[COLUMN_NAME_ALIMENTS][i] for i in dfAliments.index]))  #0
+dfAliments[COLONNE_EST_BIO] = ['bio' in nom_aliment for nom_aliment in dfAliments[COLUMN_NAME_ALIMENTS]]
+dfAliments[COLONNE_EST_VEGAN] = ['vegan' in nom_aliment for nom_aliment in dfAliments[COLUMN_NAME_ALIMENTS]]
+dfAliments[COLONNE_EST_CASHER] = ['casher' in groupe_aliment for groupe_aliment in dfAliments[COLUMN_NAME_SPECIFIC_ALIMENTS]]
+dfAliments[COLONNE_EST_HALAL] = ['halal' in groupe_aliment for groupe_aliment in dfAliments[COLUMN_NAME_SPECIFIC_ALIMENTS]]
 
 #Facultatif, sert au debug
 dfAliments.to_excel('Aliment-modif.xlsx', index=False)
+
+
+dfSondage = pandas.read_excel(FILE_NAME_HABITANT)
 
 
