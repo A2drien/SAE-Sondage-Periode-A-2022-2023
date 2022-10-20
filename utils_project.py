@@ -1,5 +1,7 @@
 from pandas import DataFrame
 from os import path, makedirs
+from matplotlib.pyplot import pie, legend, savefig
+
 FICHIER_ALIMENTS = "Aliments.xlsx"
 FICHIER_SONDAGE = "Sondage.xlsx"
 
@@ -8,9 +10,10 @@ _NOM_COLONNE_SPECIFICATION_ALIMENTS = 'alim_ssssgrp_nom_fr'
 _NOM_COLONNE_NUM_PRODUIT = 'alim_code'
 _NOM_COLONNE_NB_ALIMENTS = 'Administré.e'
 
-_DONNEES_SONDE: list[str] = ["Nom", "Prénom", "Tel"]
+_DONNEES_SONDE: list[str] = ['Administré.e', "Nom", "Prénom"]
 
-_NOM_DOSSIER_Q1a = 'Question-1a'
+_NOM_DOSSIER_Q1a = 'Question-1a/'
+_NOM_DOSSIER_Q1b = 'Question-1b/'
 
 PREFERENCES_ALIMENTAIRES: dict[str, tuple[str, list[str], list[str]]] = {
     "Bio":      (
@@ -145,11 +148,32 @@ def getNbTypeAlimentsCategorieGlobal(dfSondage: DataFrame, dfAliments: DataFrame
     return listeNbTypeAlimentsCategorieGlobal
 
 
-def creerDossier(nomDossier: str) -> None:
+def _creerDossier(nomDossier: str) -> None:
     if not path.exists(nomDossier):
         makedirs(nomDossier)
 
 
+def _alerteGeneration(nomFichier: str) -> None:
+    print(f"Fichier '{nomFichier}' généré !")
+
 def listePreferenceAlimentaire(dfSondage: DataFrame, nomCategorie: str) -> None:
-    creerDossier(_NOM_DOSSIER_Q1a)
-    dfSondage.to_excel(f"{_NOM_DOSSIER_Q1a}/Pref-{nomCategorie}.xlsx", index=False, columns= _DONNEES_SONDE + ["nb"+nomCategorie])
+    _creerDossier(_NOM_DOSSIER_Q1a)
+    
+    dfSondage.sort_values(by=["nb"+nomCategorie], ascending=False)
+   
+    nomFichier = f"Pref-{nomCategorie}.xlsx"
+    dfSondage.to_excel(f"{_NOM_DOSSIER_Q1a}{nomFichier}", index=False, columns= _DONNEES_SONDE + ["nb"+nomCategorie])
+    _alerteGeneration(nomFichier)
+
+def camembertToutesCategories(dfSondage: DataFrame) -> None:
+    _creerDossier(_NOM_DOSSIER_Q1b)
+
+    listeNomCategories: list[str] = [nom for nom in PREFERENCES_ALIMENTAIRES.keys()]
+    listeNbAlimentsCategories: list[int] = [dfSondage["nb" + nomCategorie].sum() for nomCategorie in PREFERENCES_ALIMENTAIRES.keys()]    
+    
+    pie(listeNbAlimentsCategories, labels = listeNomCategories, normalize = True, autopct = lambda x: str(round(x, 2)) + '%')
+    legend()
+    
+    nomFichier = "Camembert-catg-alim.png"
+    savefig(f"{_NOM_DOSSIER_Q1b}{nomFichier}")
+    _alerteGeneration(nomFichier)
