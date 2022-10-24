@@ -11,10 +11,12 @@ if __name__ == '__main__':
         dfAliments[nomPreference] = correspondanceAlimentaire(dfAliments, nomPreference)
 
         #Ajout pour chaque sondé, du nombre d'aliments consommés par catégorie
-        dfSondage["nb" + nomPreference] = getNbTypeAlimentsCategorieGlobal(dfSondage, dfAliments, nomPreference)
+        dfSondage[getNomColonneCompteur(nomPreference)] = getNbTypeAlimentsCategorieGlobal(dfSondage, dfAliments, nomPreference)
         
         #Sauvegarde du fichier créé
         listePreferenceAlimentaire(dfSondage, nomPreference)
     
     #Question 1b
-    camembertToutesCategories(dfSondage)
+    listeCategorieAlimentaire = getCategoriesAlimentaires(dfAliments)
+    for nomCategorie in listeCategorieAlimentaire:
+        pass
