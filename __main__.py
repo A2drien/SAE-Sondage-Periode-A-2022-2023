@@ -1,28 +1,35 @@
 import pandas as pd
-from utils_project import *
+import utils_project as up
 
 if __name__ == '__main__':
-    dfAliments = pd.read_excel(FICHIER_ALIMENTS)
-    dfSondage = pd.read_excel(FICHIER_SONDAGE)
+    dfAliments = pd.read_excel(up.FICHIER_ALIMENTS)
+    dfSondage = pd.read_excel(up.FICHIER_SONDAGE)
+
+    up.attribuerNutriScoreAliments(dfAliments)
     
     #Question 1a
     print("Question 1a) :")
-    for nomPreference in PREFERENCES_ALIMENTAIRES.keys():
+    for nomPreference in up.PREFERENCES_ALIMENTAIRES.keys():
         #Ajout pour chaque aliment de leur appartenance ou non à toutes les catégories
-        dfAliments[nomPreference] = correspondanceAlimentaire(dfAliments, nomPreference)
+        dfAliments[nomPreference] = up.correspondanceAlimentaire(dfAliments, nomPreference)
 
         #Ajout pour chaque sondé, du nombre d'aliments consommés par catégorie
-        dfSondage[getNomColonneCompteur(nomPreference)] = getNbTypeAlimentsCategorieGlobal(dfSondage, dfAliments, nomPreference)
+        dfSondage[up.getNomColonneCompteur(nomPreference)] = up.getNbTypeAlimentsCategorieGlobal(dfSondage, dfAliments, nomPreference)
         
         #Sauvegarde du fichier créé
-        listePreferenceAlimentaire(dfSondage, nomPreference)
+        up.listePreferenceAlimentaire(dfSondage, nomPreference)
     
     #Question 1b
     print("\nQuestion 1b) :")
-    listeCategorieAlimentaire = getCategoriesAlimentaires(dfAliments)
+    listeCategorieAlimentaire = up.getCategoriesAlimentaires(dfAliments)
 
     for nomCategorie in listeCategorieAlimentaire:
-        dfSondage[getNomColonneCompteur(nomCategorie)] = truc(dfSondage, dfAliments, nomCategorie)
+        dfSondage[up.getNomColonneCompteur(nomCategorie)] = up.truc(dfSondage, dfAliments, nomCategorie)
     
-    camembertToutesCategories(dfSondage, listeCategorieAlimentaire)
+    up.camembertToutesCategories(dfSondage, listeCategorieAlimentaire)
 
+
+    print("Question 2) :")
+    dfAliments["NutriScore"] = up.attribuerNutriScoreAliments(dfAliments)
+
+    dfAliments.to_excel("test.xlsx", index=False, columns=['alim_code', 'alim_nom_fr', 'NutriScore'])

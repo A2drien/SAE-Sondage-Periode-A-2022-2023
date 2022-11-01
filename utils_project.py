@@ -1,40 +1,40 @@
-from unittest import case
-from numpy import size
 from pandas import DataFrame
 from os import path, makedirs
 from matplotlib.pyplot import pie, legend, savefig, figure, tight_layout, title
 
-FICHIER_ALIMENTS = "Aliments.xlsx"
-FICHIER_SONDAGE = "Sondage.xlsx"
+FICHIER_ALIMENTS: str = "Aliments.xlsx"
+FICHIER_SONDAGE: str = "Sondage.xlsx"
 
-_NB_ALIMENTS = 10
+_NB_ALIMENTS: int = 10
 
-_NOM_COLONNE_ALIMENT: str                   = 'alim_nom_fr'
-_NOM_COLONNE_CATEGORIE_ALIMENT: str         = "alim_grp_nom_fr"
-_NOM_COLONNE_SPECIFICATION_ALIMENTS: str    = 'alim_ssssgrp_nom_fr'
-_NOM_COLONNE_NUM_PRODUIT: str               = 'alim_code'
+_NOM_COLONNE_ALIMENT: str = 'alim_nom_fr'
+_NOM_COLONNE_CATEGORIE_ALIMENT: str = "alim_grp_nom_fr"
+_NOM_COLONNE_SPECIFICATION_ALIMENTS: str = 'alim_ssssgrp_nom_fr'
+_NOM_COLONNE_NUM_PRODUIT: str = 'alim_code'
 
-_NOM_COLONNE_SUCRE: str     = 'Sucres (g/100 g)'
-_NOM_COLONNE_SEL: str       = 'Sel chlorure de sodium (g/100 g)'
-_NOM_COLONNE_FIBRES: str    = 'Fibres alimentaires (g/100 g)'
-_NOM_COLONNE_PROTEINES: str = ''
+_NOM_COLONNE_SUCRE: str = 'Sucres (g/100 g)'
+_NOM_COLONNE_SEL: str = 'Sel chlorure de sodium (g/100 g)'
+_NOM_COLONNE_FIBRES: str = 'Fibres alimentaires (g/100 g)'
+_NOM_COLONNE_PROTEINES: str = 'Protéines, N x facteur de Jones (g/100 g)'
 
 _DONNEES_SONDE: list[str] = ['Administré.e', "Nom", "Prénom"]
 
 _NOM_CATEGORIE_VIANDE: str = 'viandes, œufs, poissons et assimilés'
 
 
-_PENALITE_QUANTITE_SUCRE: list[float] =             [3.4, 6.8, 10, 14, 17, 20, 24, 27, 31, 34, 37, 41, 44, 48, 51]
-_PENALITE_QUANTITE_SEL: list[float] =               [0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.2, 3.4, 3.6, 3.8, 4]
-_BONUS_QUANTITE_FIBRE : list[float] =               [0.7, 1.4, 2.2, 2.9, 3.6, 4.3, 5, 5.8]
-_BONUS_QUANTITE_PROTEINES_NON_VIANDE: list[float] = [2.4, 4.8, 7.2, 9.6, 12, 14, 17]
-_BONUS_QUANTITE_PROTEINES_VIANDE: list[float] =     [2.4, 4.8]
+_PENALITE_QUANTITE_SUCRE: list[float] = [
+    3.4, 6.8, 10, 14, 17, 20, 24, 27, 31, 34, 37, 41, 44, 48, 51]
+_PENALITE_QUANTITE_SEL: list[float] = [0.2, 0.4, 0.6, 0.8, 1, 1.2,
+                                       1.4, 1.6, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.2, 3.4, 3.6, 3.8, 4]
+_BONUS_QUANTITE_FIBRE: list[float] = [0.7, 1.4, 2.2, 2.9, 3.6, 4.3, 5, 5.8]
+_BONUS_QUANTITE_PROTEINES_NON_VIANDE: list[float] = [
+    2.4, 4.8, 7.2, 9.6, 12, 14, 17]
+_BONUS_QUANTITE_PROTEINES_VIANDE: list[float] = [2.4, 4.8]
 
 
 _NOM_DOSSIER_Q1a = 'Question-1a/'
 _NOM_DOSSIER_Q1b = 'Question-1b/'
 _NOM_FICHIER_Q1b = "Camembert-catg-alim.png"
-
 
 
 PREFERENCES_ALIMENTAIRES: dict[str, tuple[str, list[str], list[str]]] = {
@@ -192,7 +192,8 @@ def _alerteGeneration(nomFichier: str) -> None:
 def listePreferenceAlimentaire(dfSondage: DataFrame, nomCategorie: str) -> None:
     _creerDossier(_NOM_DOSSIER_Q1a)
 
-    dfSondage.sort_values(by=[getNomColonneCompteur(nomCategorie)], ascending=False)
+    dfSondage.sort_values(
+        by=[getNomColonneCompteur(nomCategorie)], ascending=False)
 
     nomFichier = f"Pref-{nomCategorie}.xlsx"
     dfSondage.to_excel(f"{_NOM_DOSSIER_Q1a}{nomFichier}",
@@ -206,11 +207,12 @@ def getCategoriesAlimentaires(dfAliments: DataFrame) -> list[str]:
 
 def camembertToutesCategories(dfSondage: DataFrame, listeNomCategories: list[str]) -> None:
     _creerDossier(_NOM_DOSSIER_Q1b)
-    
+
     listeNbAlimentsCategories: list[int] = [
         dfSondage[getNomColonneCompteur(nomCategorie)].sum() for nomCategorie in listeNomCategories]
 
-    listeNbAlimentsCategories, listeNomCategories = _supprimerCategoriesAbsentes(listeNbAlimentsCategories, listeNomCategories)
+    listeNbAlimentsCategories, listeNomCategories = _supprimerCategoriesAbsentes(
+        listeNbAlimentsCategories, listeNomCategories)
 
     figure(figsize=(20, 10))
 
@@ -218,7 +220,7 @@ def camembertToutesCategories(dfSondage: DataFrame, listeNomCategories: list[str
 
     pie(listeNbAlimentsCategories, labels=listeNomCategories,
         normalize=True, autopct=lambda x: str(round(x, 2)) + '%')
-    
+
     legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
     tight_layout()
 
@@ -238,21 +240,22 @@ def _supprimerCategoriesAbsentes(listeQuantite: list[int], listeNom: list[str]) 
             del listeQuantite[i]
             del listeNom[i]
         i -= 1
-    
+
     return listeQuantite, listeNom
 
 
 def truc(dfSondage: DataFrame, dfAliments: DataFrame, nomCategorie: str) -> list[int]:
     listeNbTypeAlimentCategorie: list[int] = []
-    
+
     for idxSonde in range(len(dfSondage.values)):
         nbAlimentCategorie = 0
-    
+
         for numAliment in _getListeAliments(dfSondage, idxSonde):
-            nbAlimentCategorie += _estCategorie(dfAliments, numAliment, nomCategorie)
-    
+            nbAlimentCategorie += _estCategorie(dfAliments,
+                                                numAliment, nomCategorie)
+
         listeNbTypeAlimentCategorie.append(nbAlimentCategorie)
-    
+
     return listeNbTypeAlimentCategorie
 
 
@@ -283,16 +286,43 @@ def _scoreProteineNonViande(quantiteProteines: float) -> int:
     return _score(quantiteProteines, _BONUS_QUANTITE_PROTEINES_NON_VIANDE)
 
 
-def calculNutriScoreAlimentaire(dfAliments: DataFrame, idProduit: int) -> int:
+def _convertirQuantite(quantite: str) -> float:
+    if type(quantite) == float: return float(quantite)
+
+    if quantite in ['traces', '-']: return 0
+
+    #Retrait des '<'
+    quantite = quantite.replace('<', '')
+
+    #Conversion des ',' en '.'
+    quantite = quantite.replace(',', '.')
+
+    return float(quantite)
+
+
+def _calculNutriScoreAlimentaire(dfAliments: DataFrame, idxProduit: int) -> int:
     nutriScore = 0
 
-    quantiteSucre: float        = dfAliments[_NOM_COLONNE_SUCRE].iloc[_getNumLigneProduct(dfAliments, idProduit)]
-    quantiteSel: float          = dfAliments[_NOM_COLONNE_SEL].iloc[_getNumLigneProduct(dfAliments, idProduit)]
-    quantiteFibre: float        = dfAliments[_NOM_COLONNE_FIBRES].iloc[_getNumLigneProduct(dfAliments, idProduit)]
-    quantiteProteines: float    = dfAliments[_NOM_COLONNE_PROTEINES].iloc[_getNumLigneProduct(dfAliments, idProduit)]
+    infoAliment = dfAliments.loc[idxProduit]
+
+    quantiteSucre: float        = _convertirQuantite(infoAliment[_NOM_COLONNE_SUCRE])
+    quantiteSel: float          = _convertirQuantite(infoAliment[_NOM_COLONNE_SEL])
+    quantiteFibre: float        = _convertirQuantite(infoAliment[_NOM_COLONNE_FIBRES])
+    quantiteProteines: float    = _convertirQuantite(infoAliment[_NOM_COLONNE_PROTEINES])
 
     nutriScore += _scoreSucre(quantiteSucre)
     nutriScore += _scoreSel(quantiteSel)
     nutriScore += _scoreFibre(quantiteFibre)
 
+    if infoAliment[_NOM_COLONNE_CATEGORIE_ALIMENT] == _NOM_CATEGORIE_VIANDE:
+        nutriScore += _scoreProteineViande(quantiteProteines)
+    else:
+        nutriScore += _scoreProteineNonViande(quantiteProteines)
+
     return nutriScore
+
+
+def attribuerNutriScoreAliments(dfAliments: DataFrame) -> list[int]:
+    listeNutriScore: list[int] = [_calculNutriScoreAlimentaire(
+        dfAliments, idxAliment) for idxAliment in range(len(dfAliments.values))]
+    return listeNutriScore
