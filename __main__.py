@@ -6,6 +6,7 @@ if __name__ == '__main__':
     dfSondage = pd.read_excel(FICHIER_SONDAGE)
     
     #Question 1a
+    print("Question 1a) :")
     for nomPreference in PREFERENCES_ALIMENTAIRES.keys():
         #Ajout pour chaque aliment de leur appartenance ou non à toutes les catégories
         dfAliments[nomPreference] = correspondanceAlimentaire(dfAliments, nomPreference)
@@ -17,6 +18,11 @@ if __name__ == '__main__':
         listePreferenceAlimentaire(dfSondage, nomPreference)
     
     #Question 1b
+    print("\nQuestion 1b) :")
     listeCategorieAlimentaire = getCategoriesAlimentaires(dfAliments)
+
     for nomCategorie in listeCategorieAlimentaire:
-        pass
+        dfSondage[getNomColonneCompteur(nomCategorie)] = truc(dfSondage, dfAliments, nomCategorie)
+    
+    camembertToutesCategories(dfSondage, listeCategorieAlimentaire)
+
