@@ -8,8 +8,6 @@ class PythonTest(unittest.TestCase):
         dfAliments = pd.read_excel(up.FICHIER_ALIMENTS)
         dfSondage = pd.read_excel(up.FICHIER_SONDAGE)
 
-        up.attribuerNutriScoreAliments(dfAliments)
-
         for nomPreference in up.PREFERENCES_ALIMENTAIRES.keys():
             dfAliments[nomPreference] = up.correspondanceAlimentaire(
                 dfAliments, nomPreference)
@@ -40,10 +38,13 @@ class PythonTest(unittest.TestCase):
     
     def NutriScore(self):
         dfAliments = pd.read_excel(up.FICHIER_ALIMENTS)
-        dfSondage = pd.read_excel(up.FICHIER_SONDAGE)
-
-        #Calcul du nutriscore
-        dfSondage[up.NOM_COLONNE_NUTRISCORE] = up.nutriScorePersonnes(
-            dfSondage, dfAliments)
         
-        self.assertEquals(up.)
+        """
+            -0 car < 3.4g de sucre
+            -5 car = 1g de sel
+            +1 car > 0.7g de fibre
+            +3 car > 8.06g de protéines (produit non viande)
+            => -1
+        """
+        #Incohérant, -5, dont -1 avec le bonus viande (au lieu du +3)
+        self.assertEquals(up.calculNutriScoreAlimentaire(dfAliments, 4041), -2)
