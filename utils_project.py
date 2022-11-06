@@ -1,4 +1,4 @@
-from pandas import DataFrame
+from pandas import DataFrame, isna
 from os import path, makedirs
 from matplotlib.pyplot import pie, legend, savefig, figure, tight_layout, title
 
@@ -11,6 +11,7 @@ _NOM_COLONNE_ALIMENT: str = 'alim_nom_fr'
 _NOM_COLONNE_CATEGORIE_ALIMENT: str = "alim_grp_nom_fr"
 _NOM_COLONNE_SPECIFICATION_ALIMENTS: str = 'alim_ssssgrp_nom_fr'
 _NOM_COLONNE_NUM_PRODUIT: str = 'alim_code'
+NOM_COLONNE_NUTRISCORE = "NutriScore"
 
 _NOM_COLONNE_SUCRE: str = 'Sucres (g/100 g)'
 _NOM_COLONNE_SEL: str = 'Sel chlorure de sodium (g/100 g)'
@@ -32,11 +33,19 @@ _BONUS_QUANTITE_PROTEINES_NON_VIANDE: list[float] = [
 _BONUS_QUANTITE_PROTEINES_VIANDE: list[float] = [2.4, 4.8]
 
 
-_NOM_DOSSIER_Q1a = 'Question-1a/'
-_NOM_DOSSIER_Q1b = 'Question-1b/'
-_NOM_FICHIER_Q1b = "Camembert-catg-alim.png"
+_NOM_DOSSIER_Q1a: str = 'Question-1a/'
+_NOM_DOSSIER_Q1b: str = 'Question-1b/'
+_NOM_FICHIER_Q1b: str = "Camembert-catg-alim.png"
+_NOM_DOSSIER_Q2: str = "Question-2"
 
-
+"""Structure composé de :
+    - La Catégorie
+        - Le lieu (la colonne) où chercher la vérification de l'appartenance
+            à cette catégorie
+        - Une whiteliste qui valide l'appartenance à la catégorie
+        - Une blackliste qui supprime les termes avant les tests d'appartenances
+            à la catégorie 
+"""
 PREFERENCES_ALIMENTAIRES: dict[str, tuple[str, list[str], list[str]]] = {
     "Bio":      (
         _NOM_COLONNE_ALIMENT,
@@ -47,7 +56,7 @@ PREFERENCES_ALIMENTAIRES: dict[str, tuple[str, list[str], list[str]]] = {
     "Vegan":    (
         _NOM_COLONNE_ALIMENT,
         ['vegan', 'végan'],
-        []
+        ['ne convient pas aux véganes', 'ne convient pas aux veganes']
     ),
 
     "Casher":   (
@@ -64,7 +73,15 @@ PREFERENCES_ALIMENTAIRES: dict[str, tuple[str, list[str], list[str]]] = {
 }
 
 
-def getNomColonneCompteur(nomCategorie: str):
+def getNomColonneCompteur(nomCategorie: str) -> str:
+    """Retourne le nom de colonne de la catégorie en paramètre
+
+    Args:
+        nomCategorie (str): Nom de la catégorie
+
+    Returns:
+        str: Nom de colonne de la catégorie
+    """
     return "nb"+nomCategorie
 
 
@@ -81,7 +98,8 @@ def _getNumLigneProduct(dfAliments: DataFrame, idProduit: int) -> int:
     return dfAliments[dfAliments[_NOM_COLONNE_NUM_PRODUIT] == idProduit].index.to_list()[0]
 
 
-def _estEtat(dfAliments: DataFrame, idProduit: int, nomColonne: str) -> bool:
+# Méthode mise en public afin de faciliter les tests
+def estEtat(dfAliments: DataFrame, idProduit: int, nomColonne: str) -> bool:
     """Retourne la valeur booléenne de la colonne du produit données en paramètre
 
     Args:
@@ -108,7 +126,11 @@ def _getListeAliments(dfSondage: DataFrame, idxSonde: int) -> list[int]:
     listeAliments: list[int] = []
 
     for idxAliment in range(1, _NB_ALIMENTS+1):
-        listeAliments.append(dfSondage[f'Aliment{idxAliment}'].iloc[idxSonde])
+        numAliment = dfSondage[f'Aliment{idxAliment}'].iloc[idxSonde]
+        # Si l'aliment est bien renseigné, le rajouter
+        if not isna(numAliment):
+            listeAliments.append(
+                dfSondage[f'Aliment{idxAliment}'].iloc[idxSonde])
 
     return listeAliments
 
@@ -126,22 +148,42 @@ def _getNbTypeAlimentCategorieIndividuel(listeidProduit: list[int], dfAliments: 
     """
     nbOccurrence = 0
     for idProduit in listeidProduit:
-        nbOccurrence += _estEtat(dfAliments, idProduit, colonneTypeAliment)
+        nbOccurrence += estEtat(dfAliments, idProduit, colonneTypeAliment)
     return nbOccurrence
 
 
 def _supprimerExceptions(string: str, exceptions: list[str]) -> str:
+    """Supprime dans le titre les mots blacklistés
+
+    Args:
+        string (str): Titre à éventuellement modifier
+        exceptions (list[str]): Liste des mots blacklistés
+
+    Returns:
+        str: Titre corrigé
+    """
     exceptions.sort(key=len, reverse=True)
     for exception in exceptions:
         string = string.replace(exception, '')
     return string
 
 
-def correspondanceAlimentaire(dfAliment: DataFrame, nomPreference: str) -> list[bool]:
+def correspondanceAlimentaire(dfAliments: DataFrame, nomPreference: str) -> list[bool]:
+    """Retourne la liste booléenne correspondante à l'appartenance ou non à 
+    la préférence donnée en paramètre pour chaque aliment
+
+    Args:
+        dfAliments (DataFrame): DataFrame des aliments
+        nomPreference (str): Nom de la préférence à tester
+
+    Returns:
+        list[bool]: Liste de booléen sur l'appartenance ou non à la préférence
+        pour chaque aliment
+    """
     nomColonne, correspondances, exceptions = PREFERENCES_ALIMENTAIRES[nomPreference]
 
     L: list[bool] = []
-    for label in dfAliment[nomColonne]:
+    for label in dfAliments[nomColonne]:
         L.append(any(correspondance in _supprimerExceptions(
             label.lower(), exceptions) for correspondance in correspondances))
     return L
@@ -180,32 +222,42 @@ def _creerDossier(nomDossier: str) -> None:
         makedirs(nomDossier)
 
 
-def _alerteGeneration(nomFichier: str) -> None:
-    """Affiche dans la console qu'un fichier a été généré
+def listePreferenceAlimentaire(dfSondage: DataFrame, nomCategorie: str) -> None:
+    """Crée un fichier Excel du nombre d'aliment d'une catégorie consommé par chaque
+    personne
 
     Args:
-        nomFichier (str): Nom du fichier généré
+        dfSondage (DataFrame): DataFrame des sondés
+        nomCategorie (str): Nom de la catégorie consommée
     """
-    print(f"\tFichier '{nomFichier}' généré !")
-
-
-def listePreferenceAlimentaire(dfSondage: DataFrame, nomCategorie: str) -> None:
     _creerDossier(_NOM_DOSSIER_Q1a)
 
-    dfSondage.sort_values(
+    # Trie les valeur par ordre décroissant
+    dfSondage = dfSondage.sort_values(
         by=[getNomColonneCompteur(nomCategorie)], ascending=False)
 
-    nomFichier = f"Pref-{nomCategorie}.xlsx"
-    dfSondage.to_excel(f"{_NOM_DOSSIER_Q1a}{nomFichier}",
+    dfSondage.to_excel(f"{_NOM_DOSSIER_Q1a}Pref-{nomCategorie}.xlsx",
                        index=False, columns=_DONNEES_SONDE + [getNomColonneCompteur(nomCategorie)])
-    _alerteGeneration(nomFichier)
 
 
 def getCategoriesAlimentaires(dfAliments: DataFrame) -> list[str]:
+    """
+    Args:
+        dfAliments (DataFrame): DataFrame des aliments
+
+    Returns:
+        list[str]: Liste de toutes les catégories alimentaires
+    """
     return list(set(dfAliments[_NOM_COLONNE_CATEGORIE_ALIMENT].tolist()))
 
 
 def camembertToutesCategories(dfSondage: DataFrame, listeNomCategories: list[str]) -> None:
+    """Génère un camembert sur la moyenne du nombre d'aliments choisis par catégorie
+
+    Args:
+        dfSondage (DataFrame): DataFrame des sondés
+        listeNomCategories (list[str]): Liste des catégories
+    """
     _creerDossier(_NOM_DOSSIER_Q1b)
 
     listeNbAlimentsCategories: list[int] = [
@@ -216,7 +268,7 @@ def camembertToutesCategories(dfSondage: DataFrame, listeNomCategories: list[str
 
     figure(figsize=(20, 10))
 
-    title("")
+    title("Répartition des catégories d'aliments les plus choisies")
 
     pie(listeNbAlimentsCategories, labels=listeNomCategories,
         normalize=True, autopct=lambda x: str(round(x, 2)) + '%')
@@ -225,14 +277,32 @@ def camembertToutesCategories(dfSondage: DataFrame, listeNomCategories: list[str
     tight_layout()
 
     savefig(f"{_NOM_DOSSIER_Q1b}{_NOM_FICHIER_Q1b}")
-    _alerteGeneration(_NOM_FICHIER_Q1b)
 
 
-def _estCategorie(dfAliment: DataFrame, numAliment: int, nomCategorie: str) -> bool:
-    return dfAliment[_NOM_COLONNE_CATEGORIE_ALIMENT].iloc[_getNumLigneProduct(dfAliment, numAliment)] == nomCategorie
+def _estCategorie(dfAliments: DataFrame, numAliment: int, nomCategorie: str) -> bool:
+    """Indique si tel aliment appartient à tel catégorie
+
+    Args:
+        dfAliments (DataFrame): DataFrame des aliments
+        numAliment (int): Numéro de l'aliment
+        nomCategorie (str): Nom de la catégorie
+
+    Returns:
+        bool: True s'il appartient à la catégorie en paramètre, False sinon
+    """
+    return dfAliments[_NOM_COLONNE_CATEGORIE_ALIMENT].iloc[_getNumLigneProduct(dfAliments, numAliment)] == nomCategorie
 
 
 def _supprimerCategoriesAbsentes(listeQuantite: list[int], listeNom: list[str]) -> tuple[list[int], list[str]]:
+    """Supprime les catégories d'aliments non choisies
+
+    Args:
+        listeQuantite (list[int]): Liste des quantités choisies par catégories
+        listeNom (list[str]): Liste des noms de catégories
+
+    Returns:
+        tuple[list[int], list[str]]: Les 2 listes en paramètres modifiées
+    """
     i = len(listeQuantite)-1
 
     while i >= 0:
@@ -244,7 +314,18 @@ def _supprimerCategoriesAbsentes(listeQuantite: list[int], listeNom: list[str]) 
     return listeQuantite, listeNom
 
 
-def truc(dfSondage: DataFrame, dfAliments: DataFrame, nomCategorie: str) -> list[int]:
+def getNbAlimentsCategorie(dfSondage: DataFrame, dfAliments: DataFrame, nomCategorie: str) -> list[int]:
+    """Retourne, pour chaque sondé, le nombre d'aliments appartenant à la
+    catégorie donnée en paramètre
+
+    Args:
+        dfSondage (DataFrame): DataFrame des sondés
+        dfAliments (DataFrame): DataFrame des aliments
+        nomCategorie (str): Catégorie
+
+    Returns:
+        list[int]: Liste du nombre d'aliments pour la catégorie choisie
+    """
     listeNbTypeAlimentCategorie: list[int] = []
 
     for idxSonde in range(len(dfSondage.values)):
@@ -260,6 +341,15 @@ def truc(dfSondage: DataFrame, dfAliments: DataFrame, nomCategorie: str) -> list
 
 
 def _score(quantite: float, listeScore: list[float]) -> int:
+    """Factorisation du code du nutriscore
+
+    Args:
+        quantite (float): Quantié de l'élément
+        listeScore (list[float]): Liste des paliers de points
+
+    Returns:
+        int: Score
+    """
     for nbPoints in range(len(listeScore)):
         if quantite < listeScore[nbPoints]:
             return nbPoints
@@ -267,48 +357,103 @@ def _score(quantite: float, listeScore: list[float]) -> int:
 
 
 def _scoreSucre(quantiteSucre: float) -> int:
+    """
+    Args:
+        quantiteSucre (float): Quantité de sucre de l'aliment (pour 100g)
+
+    Returns:
+        int: Nombre de points de pénalité
+    """
     return -_score(quantiteSucre, _PENALITE_QUANTITE_SUCRE)
 
 
 def _scoreSel(quantiteSel: float) -> int:
+    """
+    Args:
+        quantiteSel (float): Quantité de sel de l'aliment (pour 100g)
+
+    Returns:
+        int: Nombre de points de pénalité
+    """
     return -_score(quantiteSel, _PENALITE_QUANTITE_SEL)
 
 
 def _scoreFibre(quantiteFibre: float) -> int:
+    """
+    Args:
+        quantiteFibre (float): Quantité de fibre de l'aliment (pour 100g)
+
+    Returns:
+        int: Nombre de points bonus
+    """
     return _score(quantiteFibre, _BONUS_QUANTITE_FIBRE)
 
 
 def _scoreProteineViande(quantiteProteines: float) -> int:
+    """
+    Args:
+        quantiteProteines (float): Quantité de protéines de la viande (pour 100g)
+
+    Returns:
+        int: Nombre de points bonus
+    """
     return _score(quantiteProteines, _BONUS_QUANTITE_PROTEINES_VIANDE)
 
 
 def _scoreProteineNonViande(quantiteProteines: float) -> int:
+    """
+    Args:
+        quantiteProteines (float): Quantité de protéines de l'aliment non-viande (pour 100g)
+
+    Returns:
+        int: Nombre de points bonus
+    """
     return _score(quantiteProteines, _BONUS_QUANTITE_PROTEINES_NON_VIANDE)
 
 
 def _convertirQuantite(quantite: str) -> float:
-    if type(quantite) == float: return float(quantite)
+    """Convertit la quantité donnée dans un format utilisable
 
-    if quantite in ['traces', '-']: return 0
+    Args:
+        quantite (str): Quantité donnée
 
-    #Retrait des '<'
+    Returns:
+        float: Quantité (format utilisable)
+    """
+    if type(quantite) == float:
+        return float(quantite)
+
+    if quantite in ['traces', '-']:
+        return 0
+
+    # Retrait des '<'
     quantite = quantite.replace('<', '')
 
-    #Conversion des ',' en '.'
+    # Conversion des ',' en '.'
     quantite = quantite.replace(',', '.')
 
     return float(quantite)
 
 
-def _calculNutriScoreAlimentaire(dfAliments: DataFrame, idxProduit: int) -> int:
+def _calculNutriScoreAlimentaire(dfAliments: DataFrame, numProduit: int) -> int:
+    """Calcul du nutriscore
+
+    Args:
+        dfAliments (DataFrame): DataFrame des aliments
+        numProduit (int): numéro du produit
+
+    Returns:
+        int: Nutriscore du produit
+    """
     nutriScore = 0
 
-    infoAliment = dfAliments.loc[idxProduit]
+    infoAliment = dfAliments.loc[_getNumLigneProduct(dfAliments, numProduit)]
 
-    quantiteSucre: float        = _convertirQuantite(infoAliment[_NOM_COLONNE_SUCRE])
-    quantiteSel: float          = _convertirQuantite(infoAliment[_NOM_COLONNE_SEL])
-    quantiteFibre: float        = _convertirQuantite(infoAliment[_NOM_COLONNE_FIBRES])
-    quantiteProteines: float    = _convertirQuantite(infoAliment[_NOM_COLONNE_PROTEINES])
+    quantiteSucre: float = _convertirQuantite(infoAliment[_NOM_COLONNE_SUCRE])
+    quantiteSel: float = _convertirQuantite(infoAliment[_NOM_COLONNE_SEL])
+    quantiteFibre: float = _convertirQuantite(infoAliment[_NOM_COLONNE_FIBRES])
+    quantiteProteines: float = _convertirQuantite(
+        infoAliment[_NOM_COLONNE_PROTEINES])
 
     nutriScore += _scoreSucre(quantiteSucre)
     nutriScore += _scoreSel(quantiteSel)
@@ -322,7 +467,40 @@ def _calculNutriScoreAlimentaire(dfAliments: DataFrame, idxProduit: int) -> int:
     return nutriScore
 
 
-def attribuerNutriScoreAliments(dfAliments: DataFrame) -> list[int]:
-    listeNutriScore: list[int] = [_calculNutriScoreAlimentaire(
-        dfAliments, idxAliment) for idxAliment in range(len(dfAliments.values))]
+def nutriScorePersonnes(dfSondage: DataFrame, dfAliments: DataFrame) -> list[float]:
+    """Retourne le nutriscore de chaque personne
+
+    Args:
+        dfSondage (DataFrame): DataFrame des sondés
+        dfAliments (DataFrame): DataFrame des aliments
+
+    Returns:
+        list[int]: Liste des nutriscores
+    """
+    listeNutriScore: list[float] = []
+
+    for idxSonde in range(len(dfSondage.values)):
+        listeAliments: list[int] = _getListeAliments(dfSondage, idxSonde)
+        listeNutriScorePersonne: list[int] = [_calculNutriScoreAlimentaire(
+            dfAliments, idProduit) for idProduit in listeAliments]
+        scorePersonne = sum(listeNutriScorePersonne) / len(listeNutriScorePersonne)
+        listeNutriScore.append(scorePersonne)
+
     return listeNutriScore
+
+
+def sauvegardeNutriScore(dfSondage: DataFrame) -> None:
+    """Sauvegarde les nutriscores des sondés dans un fichier
+
+    Args:
+        dfSondage (DataFrame): DataFrame des sondés
+    """
+    _creerDossier(_NOM_DOSSIER_Q2)
+
+    # Trie les valeur par ordre décroissant
+    dfSondage = dfSondage.sort_values(
+        by=[NOM_COLONNE_NUTRISCORE], ascending=False)
+
+    # Sauvegarde le fichier
+    dfSondage.to_excel(f"{_NOM_DOSSIER_Q2}/Nutriscore.xlsx",
+                       index=False, columns=_DONNEES_SONDE+[NOM_COLONNE_NUTRISCORE])
